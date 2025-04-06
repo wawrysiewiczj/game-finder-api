@@ -6,6 +6,24 @@ import { Separator } from "./ui/separator";
 import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
 import { cn } from "../lib/utils";
 import { Link } from "react-router-dom";
+import { Input } from "./ui/input";
+import { Slider } from "./ui/slider";
+import { Checkbox } from "./ui/checkbox";
+import { Label } from "./ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "./ui/accordion";
+import { useDebounce } from "../hooks/useDebounce";
 
 // Icons
 const HomeIcon = (props) => (
@@ -79,6 +97,52 @@ const ActionIcon = (props) => (
   </svg>
 );
 
+const SearchIcon = (props) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={cn("h-5 w-5", props.className)}
+  >
+    <circle cx="11" cy="11" r="8" />
+    <path d="m21 21-4.3-4.3" />
+  </svg>
+);
+
+const FilterIcon = (props) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={cn("h-5 w-5", props.className)}
+  >
+    <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+  </svg>
+);
+
+const SortIcon = (props) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={cn("h-5 w-5", props.className)}
+  >
+    <path d="M3 6h18M7 12h10m-14 6h18" />
+  </svg>
+);
+
 const RPGIcon = (props) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -116,21 +180,6 @@ const ShooterIcon = (props) => (
   </svg>
 );
 
-const StarIcon = (props) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className={cn("h-5 w-5", props.className)}
-  >
-    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-  </svg>
-);
-
 const ChevronLeftIcon = (props) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -163,6 +212,45 @@ const MenuIcon = (props) => (
   </svg>
 );
 
+// Data for filters
+const platforms = [
+  { id: 4, name: "PC" },
+  { id: 187, name: "PlayStation 5" },
+  { id: 18, name: "PlayStation 4" },
+  { id: 1, name: "Xbox One" },
+  { id: 186, name: "Xbox Series S/X" },
+  { id: 7, name: "Nintendo Switch" },
+  { id: 3, name: "iOS" },
+  { id: 21, name: "Android" },
+];
+
+const genres = [
+  { id: 4, name: "Action", icon: ActionIcon },
+  { id: 51, name: "Indie", icon: null },
+  { id: 3, name: "Adventure", icon: null },
+  { id: 5, name: "RPG", icon: RPGIcon },
+  { id: 10, name: "Strategy", icon: null },
+  { id: 2, name: "Shooter", icon: ShooterIcon },
+  { id: 40, name: "Casual", icon: null },
+  { id: 14, name: "Simulation", icon: null },
+  { id: 7, name: "Puzzle", icon: null },
+  { id: 11, name: "Arcade", icon: null },
+  { id: 83, name: "Platformer", icon: null },
+  { id: 1, name: "Racing", icon: null },
+  { id: 59, name: "Massively Multiplayer", icon: null },
+  { id: 15, name: "Sports", icon: null },
+  { id: 6, name: "Fighting", icon: null },
+];
+
+const sortOptions = [
+  { value: "-added", label: "Date added" },
+  { value: "name", label: "Name (A-Z)" },
+  { value: "-name", label: "Name (Z-A)" },
+  { value: "-released", label: "Release date" },
+  { value: "-metacritic", label: "Popularity" },
+  { value: "-rating", label: "Average rating" },
+];
+
 // Genre badges with color variants
 const GenreBadge = ({ name, icon: Icon, isActive, onClick }) => (
   <button
@@ -183,161 +271,306 @@ const Sidebar = ({
   activeTab,
   setActiveTab,
   onFilterChange,
+  onSearch,
+  initialQuery = "",
+  initialFilters = {},
   isCollapsed = false,
   setIsCollapsed = () => {},
+  isMobileOnly = false,
 }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [activePlatform, setActivePlatform] = useState(null);
-  const [activeGenre, setActiveGenre] = useState(null);
   const [showOnMobile, setShowOnMobile] = useState(false);
+  const [searchQuery, setSearchQuery] = useState(initialQuery);
+  const debouncedSearch = useDebounce(searchQuery, 500);
 
-  const platforms = [
-    { id: 4, name: "PC" },
-    { id: 187, name: "PlayStation 5" },
-    { id: 18, name: "PlayStation 4" },
-    { id: 1, name: "Xbox One" },
-    { id: 186, name: "Xbox Series S/X" },
-    { id: 7, name: "Nintendo Switch" },
-  ];
+  // Filter states
+  const [selectedSort, setSelectedSort] = useState(
+    initialFilters.ordering || "-added"
+  );
+  const [selectedPlatforms, setSelectedPlatforms] = useState(() => {
+    return initialFilters.platforms
+      ? initialFilters.platforms.split(",").map((id) => parseInt(id, 10))
+      : [];
+  });
+  const [selectedGenres, setSelectedGenres] = useState(() => {
+    return initialFilters.genres
+      ? initialFilters.genres.split(",").map((id) => parseInt(id, 10))
+      : [];
+  });
+  const [ratingRange, setRatingRange] = useState(() => {
+    return [
+      initialFilters.rating_min !== undefined
+        ? parseFloat(initialFilters.rating_min)
+        : 0,
+      initialFilters.rating_max !== undefined
+        ? parseFloat(initialFilters.rating_max)
+        : 5,
+    ];
+  });
 
-  const popularGenres = [
-    { id: 4, name: "Action", icon: ActionIcon },
-    { id: 5, name: "RPG", icon: RPGIcon },
-    { id: 2, name: "Shooter", icon: ShooterIcon },
-    { id: 3, name: "Adventure", icon: null },
-    { id: 10, name: "Strategy", icon: null },
-    { id: 51, name: "Indie", icon: null },
-  ];
+  // Temporary filter states
+  const [tempPlatforms, setTempPlatforms] = useState(selectedPlatforms);
+  const [tempGenres, setTempGenres] = useState(selectedGenres);
+  const [tempRatingRange, setTempRatingRange] = useState(ratingRange);
 
-  const handlePlatformClick = (platformId) => {
-    const newActiveId = activePlatform === platformId ? null : platformId;
-    setActivePlatform(newActiveId);
+  // Handle search input
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value);
+  };
 
-    if (onFilterChange) {
-      onFilterChange({
-        platforms: newActiveId ? newActiveId.toString() : "",
-      });
+  // Apply search when debounced value changes
+  React.useEffect(() => {
+    if (debouncedSearch !== initialQuery) {
+      onSearch(debouncedSearch);
     }
+  }, [debouncedSearch, initialQuery, onSearch]);
+
+  // Handle sort change
+  const handleSortChange = (value) => {
+    setSelectedSort(value);
+    onFilterChange({ ordering: value });
+  };
+
+  // Handle platform selection
+  const handlePlatformChange = (platformId) => {
+    setTempPlatforms((prev) => {
+      if (prev.includes(platformId)) {
+        return prev.filter((id) => id !== platformId);
+      } else {
+        return [...prev, platformId];
+      }
+    });
+  };
+
+  // Handle genre selection
+  const handleGenreChange = (genreId) => {
+    setTempGenres((prev) => {
+      if (prev.includes(genreId)) {
+        return prev.filter((id) => id !== genreId);
+      } else {
+        return [...prev, genreId];
+      }
+    });
+  };
+
+  // Handle rating range change
+  const handleRatingChange = (value) => {
+    setTempRatingRange(value);
+  };
+
+  // Reset all filters
+  const handleReset = () => {
+    setTempPlatforms([]);
+    setTempGenres([]);
+    setTempRatingRange([0, 5]);
+    setSelectedPlatforms([]);
+    setSelectedGenres([]);
+    setRatingRange([0, 5]);
+    setSelectedSort("-added");
+    setSearchQuery("");
+
+    onFilterChange({
+      ordering: "-added",
+      platforms: "",
+      genres: "",
+      rating_min: 0,
+      rating_max: 5,
+    });
+    onSearch("");
 
     if (showOnMobile) {
       setShowOnMobile(false);
     }
   };
 
-  const handleGenreClick = (genreId) => {
-    const newActiveId = activeGenre === genreId ? null : genreId;
-    setActiveGenre(newActiveId);
+  // Apply filters
+  const handleApplyFilters = () => {
+    setSelectedPlatforms(tempPlatforms);
+    setSelectedGenres(tempGenres);
+    setRatingRange(tempRatingRange);
 
-    if (onFilterChange) {
-      onFilterChange({
-        genres: newActiveId ? newActiveId.toString() : "",
-      });
-    }
+    onFilterChange({
+      ordering: selectedSort,
+      platforms: tempPlatforms.join(","),
+      genres: tempGenres.join(","),
+      rating_min: tempRatingRange[0],
+      rating_max: tempRatingRange[1],
+    });
 
     if (showOnMobile) {
       setShowOnMobile(false);
     }
   };
 
-  const handleNavClick = (tab) => {
-    setActiveTab(tab);
-    if (showOnMobile) {
-      setShowOnMobile(false);
-    }
+  // Get active filter count for badge
+  const getActiveFilterCount = () => {
+    let count = 0;
+    if (selectedPlatforms.length > 0) count += 1;
+    if (selectedGenres.length > 0) count += 1;
+    if (ratingRange[0] > 0 || ratingRange[1] < 5) count += 1;
+    if (searchQuery) count += 1;
+    return count;
   };
+
+  const filterCount = getActiveFilterCount();
+
+  // Filter panel content
+  const FilterPanel = () => (
+    <div className="grid gap-6 px-1">
+      {/* Search Input */}
+      <div className="space-y-3">
+        <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          Search
+        </h3>
+        <div className="relative">
+          <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search games..."
+            value={searchQuery}
+            onChange={handleSearchChange}
+            className="pl-10"
+          />
+        </div>
+      </div>
+
+      <Separator className="bg-muted/50" />
+
+      {/* Sort Dropdown */}
+      <div className="space-y-3">
+        <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          Sort by
+        </h3>
+        <Select value={selectedSort} onValueChange={handleSortChange}>
+          <SelectTrigger className="h-10 w-full">
+            <SelectValue placeholder="Sort by" />
+          </SelectTrigger>
+          <SelectContent>
+            {sortOptions.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <Separator className="bg-muted/50" />
+
+      {/* Filters in Accordions */}
+      <Accordion type="multiple" defaultValue={["rating"]} className="w-full">
+        <AccordionItem value="rating">
+          <AccordionTrigger className="text-base font-medium">
+            Rating Range
+          </AccordionTrigger>
+          <AccordionContent>
+            <div className="px-2 py-4">
+              <Slider
+                value={tempRatingRange}
+                onValueChange={handleRatingChange}
+                max={5}
+                step={0.5}
+                minStepsBetweenThumbs={1}
+                className="mt-2"
+                aria-label="Rating range"
+              />
+              <div className="mt-2 flex justify-between text-sm">
+                <span className="font-medium">{tempRatingRange[0]}</span>
+                <span className="font-medium">{tempRatingRange[1]}</span>
+              </div>
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+
+        <AccordionItem value="platforms">
+          <AccordionTrigger className="text-base font-medium">
+            Platforms {tempPlatforms.length > 0 && `(${tempPlatforms.length})`}
+          </AccordionTrigger>
+          <AccordionContent>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {platforms.map((platform) => (
+                <div key={platform.id} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={`platform-${platform.id}`}
+                    checked={tempPlatforms.includes(platform.id)}
+                    onCheckedChange={() => handlePlatformChange(platform.id)}
+                  />
+                  <Label
+                    htmlFor={`platform-${platform.id}`}
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    {platform.name}
+                  </Label>
+                </div>
+              ))}
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+
+        <AccordionItem value="genres">
+          <AccordionTrigger className="text-base font-medium">
+            Genres {tempGenres.length > 0 && `(${tempGenres.length})`}
+          </AccordionTrigger>
+          <AccordionContent>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {genres.map((genre) => (
+                <div key={genre.id} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={`genre-${genre.id}`}
+                    checked={tempGenres.includes(genre.id)}
+                    onCheckedChange={() => handleGenreChange(genre.id)}
+                  />
+                  <Label
+                    htmlFor={`genre-${genre.id}`}
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    {genre.name}
+                  </Label>
+                </div>
+              ))}
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+    </div>
+  );
 
   // Mobile Drawer
   const MobileSidebar = () => (
     <Sheet open={showOnMobile} onOpenChange={setShowOnMobile}>
       <SheetTrigger asChild>
-        <Button variant="ghost" size="icon" className="md:hidden">
-          <MenuIcon />
-          <span className="sr-only">Toggle Menu</span>
+        <Button variant="outline" size="icon" className="md:hidden">
+          <div className="flex items-center">
+            <FilterIcon className="h-5 w-5" />
+            {filterCount > 0 && (
+              <span className="absolute -right-1 -top-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">
+                {filterCount}
+              </span>
+            )}
+          </div>
+          <span className="sr-only">Filters</span>
         </Button>
       </SheetTrigger>
-      <SheetContent side="left" className="w-[80%] p-0 sm:max-w-sm">
+      <SheetContent side="left" className="w-[85%] p-0 sm:max-w-sm">
         <div className="flex h-full flex-col">
           <div className="border-b p-4">
-            <h2 className="bg-gradient-to-r from-purple-600 via-blue-500 to-green-400 bg-clip-text text-xl font-bold text-transparent">
-              Game Finder
-            </h2>
+            <h2 className="text-xl font-bold">Filters & Search</h2>
           </div>
           <ScrollArea className="flex-1 px-4 py-6">
-            <nav className="space-y-6">
-              <div className="space-y-3">
-                <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Navigation
-                </h3>
-                <div className="space-y-1">
-                  <Button
-                    variant={activeTab === "landing" ? "secondary" : "ghost"}
-                    className="w-full justify-start"
-                    onClick={() => handleNavClick("landing")}
-                  >
-                    <HomeIcon className="mr-2" />
-                    Home
-                  </Button>
-                  <Button
-                    variant={activeTab === "browse" ? "secondary" : "ghost"}
-                    className="w-full justify-start"
-                    onClick={() => handleNavClick("browse")}
-                  >
-                    <BrowseIcon className="mr-2" />
-                    Browse
-                  </Button>
-                  <Button
-                    variant={activeTab === "about" ? "secondary" : "ghost"}
-                    className="w-full justify-start"
-                    onClick={() => handleNavClick("about")}
-                  >
-                    <InfoIcon className="mr-2" />
-                    About
-                  </Button>
-                </div>
-              </div>
-
-              <Separator />
-
-              <div className="space-y-3">
-                <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Popular Platforms
-                </h3>
-                <div className="space-y-1">
-                  {platforms.map((platform) => (
-                    <Button
-                      key={platform.id}
-                      variant={
-                        activePlatform === platform.id ? "secondary" : "ghost"
-                      }
-                      className="w-full justify-start"
-                      onClick={() => handlePlatformClick(platform.id)}
-                    >
-                      {platform.name}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-
-              <Separator />
-
-              <div className="space-y-3">
-                <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Popular Genres
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  {popularGenres.map((genre) => (
-                    <GenreBadge
-                      key={genre.id}
-                      name={genre.name}
-                      icon={genre.icon}
-                      isActive={activeGenre === genre.id}
-                      onClick={() => handleGenreClick(genre.id)}
-                    />
-                  ))}
-                </div>
-              </div>
-            </nav>
+            <FilterPanel />
           </ScrollArea>
+          <div className="border-t p-4">
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={handleReset}
+                className="flex-1"
+              >
+                Reset
+              </Button>
+              <Button onClick={handleApplyFilters} className="flex-1">
+                Apply
+              </Button>
+            </div>
+          </div>
         </div>
       </SheetContent>
     </Sheet>
@@ -353,158 +586,21 @@ const Sidebar = ({
     >
       <ScrollArea className="flex-1">
         <div className={cn("px-4 py-6", isCollapsed && "invisible")}>
-          <nav className="space-y-6">
-            <div className="space-y-3">
-              <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                Navigation
-              </h3>
-              <div className="space-y-1">
-                <Button
-                  variant={activeTab === "landing" ? "secondary" : "ghost"}
-                  className={cn(
-                    "w-full justify-start",
-                    activeTab === "landing" &&
-                      "shadow-[0_0_10px_rgba(124,58,237,0.25)]"
-                  )}
-                  onClick={() => handleNavClick("landing")}
-                >
-                  <HomeIcon className="mr-2" />
-                  Home
-                </Button>
-                <Button
-                  variant={activeTab === "browse" ? "secondary" : "ghost"}
-                  className={cn(
-                    "w-full justify-start",
-                    activeTab === "browse" &&
-                      "shadow-[0_0_10px_rgba(124,58,237,0.25)]"
-                  )}
-                  onClick={() => handleNavClick("browse")}
-                >
-                  <BrowseIcon className="mr-2" />
-                  Browse
-                </Button>
-                <Button
-                  variant={activeTab === "about" ? "secondary" : "ghost"}
-                  className={cn(
-                    "w-full justify-start",
-                    activeTab === "about" &&
-                      "shadow-[0_0_10px_rgba(124,58,237,0.25)]"
-                  )}
-                  onClick={() => handleNavClick("about")}
-                >
-                  <InfoIcon className="mr-2" />
-                  About
-                </Button>
-              </div>
-            </div>
-
-            <Separator className="bg-muted/50" />
-
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Popular Platforms
-                </h3>
-                {activePlatform && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 px-2 text-xs"
-                    onClick={() => handlePlatformClick(null)}
-                  >
-                    Clear
-                  </Button>
-                )}
-              </div>
-              <div className="space-y-1">
-                {platforms.map((platform) => (
-                  <Button
-                    key={platform.id}
-                    variant={
-                      activePlatform === platform.id ? "secondary" : "ghost"
-                    }
-                    className={cn(
-                      "w-full justify-start",
-                      activePlatform === platform.id &&
-                        "shadow-[0_0_10px_rgba(124,58,237,0.25)]"
-                    )}
-                    onClick={() => handlePlatformClick(platform.id)}
-                  >
-                    {platform.name}
-                  </Button>
-                ))}
-              </div>
-            </div>
-
-            <Separator className="bg-muted/50" />
-
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Popular Genres
-                </h3>
-                {activeGenre && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 px-2 text-xs"
-                    onClick={() => handleGenreClick(null)}
-                  >
-                    Clear
-                  </Button>
-                )}
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {popularGenres.map((genre) => (
-                  <GenreBadge
-                    key={genre.id}
-                    name={genre.name}
-                    icon={genre.icon}
-                    isActive={activeGenre === genre.id}
-                    onClick={() => handleGenreClick(genre.id)}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <Separator className="bg-muted/50" />
-
-            <div className="space-y-3">
-              <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                Top Rated
-              </h3>
-              <div className="space-y-1">
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start hover:bg-accent/80"
-                  onClick={() => {
-                    setActiveTab("browse");
-                    if (onFilterChange) {
-                      onFilterChange({ ordering: "-rating" });
-                    }
-                  }}
-                >
-                  <StarIcon className="mr-2 text-yellow-500" />
-                  Highest Rated
-                </Button>
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start hover:bg-accent/80"
-                  onClick={() => {
-                    setActiveTab("browse");
-                    if (onFilterChange) {
-                      onFilterChange({ ordering: "-metacritic" });
-                    }
-                  }}
-                >
-                  <StarIcon className="mr-2 text-green-500" />
-                  Popular Games
-                </Button>
-              </div>
-            </div>
-          </nav>
+          <h2 className="mb-6 text-xl font-bold">Filter & Search</h2>
+          <FilterPanel />
         </div>
       </ScrollArea>
+
+      <div className={cn("border-t p-4", isCollapsed && "invisible")}>
+        <div className="grid gap-2">
+          <Button variant="outline" onClick={handleReset} className="w-full">
+            Reset All
+          </Button>
+          <Button onClick={handleApplyFilters} className="w-full">
+            Apply Filters
+          </Button>
+        </div>
+      </div>
 
       {/* Sidebar Collapse Button */}
       <Button
@@ -523,109 +619,76 @@ const Sidebar = ({
     </motion.div>
   );
 
+  // Mini collapsed sidebar
+  const CollapsedSidebar = () => (
+    <div className="fixed left-0 top-16 z-30 hidden h-[calc(100vh-4rem)] w-[60px] flex-col border-r bg-card shadow-md md:flex">
+      <div className="flex flex-col items-center gap-4 py-4">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-10 w-10"
+          onClick={() => setIsCollapsed(false)}
+          title="Expand filters"
+        >
+          <FilterIcon className="h-5 w-5" />
+          {filterCount > 0 && (
+            <span className="absolute -right-1 -top-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">
+              {filterCount}
+            </span>
+          )}
+        </Button>
+
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-10 w-10"
+          onClick={() => {
+            setIsCollapsed(false);
+            document
+              .querySelector('input[placeholder="Search games..."]')
+              .focus();
+          }}
+          title="Search"
+        >
+          <SearchIcon className="h-5 w-5" />
+        </Button>
+
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-10 w-10"
+          onClick={() => {
+            setIsCollapsed(false);
+            // Focus the sort dropdown when expanded
+          }}
+          title="Sort"
+        >
+          <SortIcon className="h-5 w-5" />
+        </Button>
+      </div>
+
+      {/* Expand button */}
+      <Button
+        variant="ghost"
+        size="icon"
+        className="absolute -right-4 top-4 h-8 w-8 rounded-full border bg-background shadow-md"
+        onClick={() => setIsCollapsed(false)}
+      >
+        <ChevronLeftIcon className="rotate-180 transform" />
+        <span className="sr-only">Expand Sidebar</span>
+      </Button>
+    </div>
+  );
+
+  // If this is only for mobile
+  if (isMobileOnly) {
+    return <MobileSidebar />;
+  }
+
   return (
     <>
       <MobileSidebar />
-      <DesktopSidebar />
-
-      {/* Collapsed sidebar mini version */}
-      {isCollapsed && (
-        <div className="fixed left-0 top-16 z-30 hidden h-[calc(100vh-4rem)] w-[60px] flex-col border-r bg-card shadow-md md:flex">
-          <div className="flex flex-col items-center gap-4 py-4">
-            <Button
-              variant={activeTab === "landing" ? "secondary" : "ghost"}
-              size="icon"
-              onClick={() => handleNavClick("landing")}
-              className={cn(
-                "h-10 w-10",
-                activeTab === "landing" &&
-                  "shadow-[0_0_10px_rgba(124,58,237,0.25)]"
-              )}
-            >
-              <HomeIcon />
-            </Button>
-            <Button
-              variant={activeTab === "browse" ? "secondary" : "ghost"}
-              size="icon"
-              onClick={() => handleNavClick("browse")}
-              className={cn(
-                "h-10 w-10",
-                activeTab === "browse" &&
-                  "shadow-[0_0_10px_rgba(124,58,237,0.25)]"
-              )}
-            >
-              <BrowseIcon />
-            </Button>
-            <Button
-              variant={activeTab === "about" ? "secondary" : "ghost"}
-              size="icon"
-              onClick={() => handleNavClick("about")}
-              className={cn(
-                "h-10 w-10",
-                activeTab === "about" &&
-                  "shadow-[0_0_10px_rgba(124,58,237,0.25)]"
-              )}
-            >
-              <InfoIcon />
-            </Button>
-
-            <Separator className="my-2 w-8 bg-muted/50" />
-
-            {platforms.slice(0, 3).map((platform) => (
-              <Button
-                key={platform.id}
-                variant={activePlatform === platform.id ? "secondary" : "ghost"}
-                size="icon"
-                onClick={() => handlePlatformClick(platform.id)}
-                className={cn(
-                  "h-10 w-10",
-                  activePlatform === platform.id &&
-                    "shadow-[0_0_10px_rgba(124,58,237,0.25)]"
-                )}
-              >
-                <span className="text-xs font-bold">
-                  {platform.name.substring(0, 2)}
-                </span>
-              </Button>
-            ))}
-
-            <Separator className="my-2 w-8 bg-muted/50" />
-
-            {popularGenres.slice(0, 3).map((genre) => (
-              <Button
-                key={genre.id}
-                variant={activeGenre === genre.id ? "secondary" : "ghost"}
-                size="icon"
-                onClick={() => handleGenreClick(genre.id)}
-                className={cn(
-                  "h-10 w-10",
-                  activeGenre === genre.id &&
-                    "shadow-[0_0_10px_rgba(124,58,237,0.25)]"
-                )}
-              >
-                {genre.icon ? (
-                  <genre.icon />
-                ) : (
-                  <span className="text-xs font-bold">
-                    {genre.name.substring(0, 2)}
-                  </span>
-                )}
-              </Button>
-            ))}
-          </div>
-
-          {/* Expand button */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute -right-4 top-4 h-8 w-8 rounded-full border bg-background shadow-md"
-            onClick={() => setIsCollapsed(false)}
-          >
-            <ChevronLeftIcon className="rotate-180 transform" />
-            <span className="sr-only">Expand Sidebar</span>
-          </Button>
-        </div>
-      )}
+      {!isCollapsed ? <DesktopSidebar /> : <CollapsedSidebar />}
     </>
   );
 };

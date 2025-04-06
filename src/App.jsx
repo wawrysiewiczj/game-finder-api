@@ -587,14 +587,22 @@ function App() {
         <header className="fixed left-0 right-0 top-0 z-50 border-b bg-background/80 backdrop-blur-sm">
           <div className="mx-auto flex h-16 max-w-[90rem] items-center justify-between px-4">
             <div className="flex items-center gap-6">
-              {/* Sidebar component with collapsed state control */}
-              <Sidebar
-                activeTab={activeTab}
-                setActiveTab={setActiveTab}
-                onFilterChange={handleFilterChange}
-                isCollapsed={isSidebarCollapsed}
-                setIsCollapsed={setIsSidebarCollapsed}
-              />
+              {/* Only show the mobile menu trigger on browse page */}
+              {activeTab === "browse" && (
+                <div className="md:hidden">
+                  <Sidebar
+                    activeTab={activeTab}
+                    setActiveTab={setActiveTab}
+                    onFilterChange={handleFilterChange}
+                    onSearch={handleSearch}
+                    initialQuery={searchQuery}
+                    initialFilters={filters}
+                    isCollapsed={isSidebarCollapsed}
+                    setIsCollapsed={setIsSidebarCollapsed}
+                    isMobileOnly={true}
+                  />
+                </div>
+              )}
 
               <h1
                 className="cursor-pointer bg-gradient-to-r from-purple-600 via-blue-500 to-green-400 bg-clip-text text-2xl font-bold text-transparent"
@@ -635,11 +643,15 @@ function App() {
           </div>
         </header>
 
-        {/* Main content with responsive sidebar margin */}
+        {/* Main content with conditional sidebar */}
         <main
           className={cn(
-            "pt-16 transition-all duration-300",
-            isSidebarCollapsed ? "md:pl-[60px]" : "md:pl-[260px]"
+            "pt-16",
+            activeTab === "browse" && !isSidebarCollapsed
+              ? "md:pl-[260px]"
+              : activeTab === "browse" && isSidebarCollapsed
+              ? "md:pl-[60px]"
+              : ""
           )}
         >
           {activeTab === "landing" && (
@@ -651,28 +663,50 @@ function App() {
           )}
 
           {activeTab === "browse" && (
-            <div className="px-4 py-6 sm:py-8">
-              <motion.div
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-                className="mx-auto max-w-7xl"
-              >
-                <SearchBar onSearch={handleSearch} initialQuery={searchQuery} />
-                <FilterSort
+            <>
+              {/* Render sidebar only for Browse mode */}
+              <div className="hidden md:block">
+                <Sidebar
+                  activeTab={activeTab}
+                  setActiveTab={setActiveTab}
                   onFilterChange={handleFilterChange}
+                  onSearch={handleSearch}
+                  initialQuery={searchQuery}
                   initialFilters={filters}
+                  isCollapsed={isSidebarCollapsed}
+                  setIsCollapsed={setIsSidebarCollapsed}
                 />
+              </div>
 
-                <GameList
-                  games={games}
-                  isLoading={isLoading}
-                  isError={isError}
-                  hasNextPage={hasNextPage}
-                  fetchNextPage={fetchNextPage}
-                />
-              </motion.div>
-            </div>
+              <div className="px-4 py-6 sm:py-8">
+                <motion.div
+                  initial={{ opacity: 0, y: -20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5 }}
+                  className="mx-auto max-w-7xl"
+                >
+                  {/* Show these components only on mobile when sidebar is hidden */}
+                  <div className="mb-6 block md:hidden">
+                    <SearchBar
+                      onSearch={handleSearch}
+                      initialQuery={searchQuery}
+                    />
+                    <FilterSort
+                      onFilterChange={handleFilterChange}
+                      initialFilters={filters}
+                    />
+                  </div>
+
+                  <GameList
+                    games={games}
+                    isLoading={isLoading}
+                    isError={isError}
+                    hasNextPage={hasNextPage}
+                    fetchNextPage={fetchNextPage}
+                  />
+                </motion.div>
+              </div>
+            </>
           )}
 
           {activeTab === "about" && (
@@ -733,8 +767,12 @@ function App() {
         {/* Footer with responsive sidebar margin */}
         <footer
           className={cn(
-            "border-t bg-background px-4 py-8 transition-all duration-300",
-            isSidebarCollapsed ? "md:pl-[60px]" : "md:pl-[260px]"
+            "border-t bg-background px-4 py-8",
+            activeTab === "browse" && !isSidebarCollapsed
+              ? "md:pl-[260px]"
+              : activeTab === "browse" && isSidebarCollapsed
+              ? "md:pl-[60px]"
+              : ""
           )}
         >
           <div className="mx-auto max-w-7xl">
