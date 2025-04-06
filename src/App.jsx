@@ -4,6 +4,7 @@ import { fetchGames } from "./lib/api";
 import SearchBar from "./components/SearchBar";
 import GameList from "./components/GameList";
 import FilterSort from "./components/FilterSort";
+import Sidebar from "./components/Sidebar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs";
 import { ScrollArea } from "./components/ui/scroll-area";
 import { ThemeProvider } from "./components/ThemeProvider";
@@ -11,6 +12,7 @@ import { Button } from "./components/ui/button";
 import { ModeToggle } from "./components/ModeToggle";
 import { useUrlSearchParams } from "./hooks/useUrlSearchParams";
 import { Badge } from "./components/ui/badge";
+import { cn } from "./lib/utils";
 
 function App() {
   const { searchParams, updateSearchParams } = useUrlSearchParams();
@@ -26,6 +28,7 @@ function App() {
   const [currentPage, setCurrentPage] = useState(1);
   const [hasNextPage, setHasNextPage] = useState(false);
   const [activeTab, setActiveTab] = useState("landing");
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   // Extract values from URL params
   const searchQuery = searchParams.search || "";
@@ -582,8 +585,17 @@ function App() {
       <div className="min-h-screen bg-background">
         {/* Global Navigation */}
         <header className="fixed left-0 right-0 top-0 z-50 border-b bg-background/80 backdrop-blur-sm">
-          <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
+          <div className="mx-auto flex h-16 max-w-[90rem] items-center justify-between px-4">
             <div className="flex items-center gap-6">
+              {/* Sidebar component with collapsed state control */}
+              <Sidebar
+                activeTab={activeTab}
+                setActiveTab={setActiveTab}
+                onFilterChange={handleFilterChange}
+                isCollapsed={isSidebarCollapsed}
+                setIsCollapsed={setIsSidebarCollapsed}
+              />
+
               <h1
                 className="cursor-pointer bg-gradient-to-r from-purple-600 via-blue-500 to-green-400 bg-clip-text text-2xl font-bold text-transparent"
                 onClick={() => setActiveTab("landing")}
@@ -619,82 +631,17 @@ function App() {
             </div>
             <div className="flex items-center gap-2">
               <ModeToggle />
-              <Button
-                className="sm:hidden"
-                variant="ghost"
-                size="icon"
-                aria-label="Menu"
-                onClick={() =>
-                  document
-                    .getElementById("mobile-menu")
-                    .classList.toggle("hidden")
-                }
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={1.5}
-                  stroke="currentColor"
-                  className="h-6 w-6"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"
-                  />
-                </svg>
-              </Button>
-            </div>
-          </div>
-          {/* Mobile Menu */}
-          <div id="mobile-menu" className="hidden sm:hidden">
-            <div className="space-y-1 border-t px-4 py-3">
-              <Button
-                variant={activeTab === "landing" ? "secondary" : "ghost"}
-                size="sm"
-                onClick={() => {
-                  setActiveTab("landing");
-                  document
-                    .getElementById("mobile-menu")
-                    .classList.add("hidden");
-                }}
-                className="w-full justify-start"
-              >
-                Home
-              </Button>
-              <Button
-                variant={activeTab === "browse" ? "secondary" : "ghost"}
-                size="sm"
-                onClick={() => {
-                  setActiveTab("browse");
-                  document
-                    .getElementById("mobile-menu")
-                    .classList.add("hidden");
-                }}
-                className="w-full justify-start"
-              >
-                Browse
-              </Button>
-              <Button
-                variant={activeTab === "about" ? "secondary" : "ghost"}
-                size="sm"
-                onClick={() => {
-                  setActiveTab("about");
-                  document
-                    .getElementById("mobile-menu")
-                    .classList.add("hidden");
-                }}
-                className="w-full justify-start"
-              >
-                About
-              </Button>
             </div>
           </div>
         </header>
 
-        {/* Page content */}
-        <main className="pt-16">
+        {/* Main content with responsive sidebar margin */}
+        <main
+          className={cn(
+            "pt-16 transition-all duration-300",
+            isSidebarCollapsed ? "md:pl-[60px]" : "md:pl-[260px]"
+          )}
+        >
           {activeTab === "landing" && (
             <div>
               <HeroSection />
@@ -783,8 +730,13 @@ function App() {
           )}
         </main>
 
-        {/* Footer */}
-        <footer className="border-t bg-background px-4 py-8">
+        {/* Footer with responsive sidebar margin */}
+        <footer
+          className={cn(
+            "border-t bg-background px-4 py-8 transition-all duration-300",
+            isSidebarCollapsed ? "md:pl-[60px]" : "md:pl-[260px]"
+          )}
+        >
           <div className="mx-auto max-w-7xl">
             <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 md:grid-cols-4">
               <div>
