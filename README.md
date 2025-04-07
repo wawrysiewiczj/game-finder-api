@@ -54,7 +54,7 @@ Nowoczesna aplikacja webowa do wyszukiwania, filtrowania i przeglądania gier, w
 
 ## Autor
 
-Projekt stworzony przez [Twoje Imię](https://github.com/yourusername) jako demonstracja umiejętności front-endowych.
+Projekt stworzony przez [Jakub Wawrysiewicz](https://github.com/wawrysiewiczj).
 
 ## Licencja
 
